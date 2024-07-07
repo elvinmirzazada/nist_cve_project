@@ -15,6 +15,8 @@ def fetch_cve_data(api_key, start_index=0, results_per_page=1000):
     params = {
         "startIndex": start_index,
         "resultsPerPage": results_per_page,
+        "pubEndDate": "2024-01-05T00:00:00.000",
+        "pubStartDate": "2023-10-06T00:00:00.000"
     }
     response = requests.get(BASE_URL, headers=headers, params=params)
     if response.status_code == 200:
@@ -31,8 +33,9 @@ def fetch_all_cve_data(api_key):
 
     while start_index < total_results:
         data = fetch_cve_data(api_key, start_index, results_per_page)
-        # total_results = data["totalResults"]
+        total_results = data["totalResults"]
         all_data.extend(data["vulnerabilities"])
+        insert_data(data["vulnerabilities"])
         start_index += results_per_page
 
     return all_data
@@ -108,13 +111,13 @@ def insert_data(cve_data):
                             confidentiality_requirement, integrity_equirement, availability_equirement, environmental_score
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
                     """, (
-                        metric_id, cvss_data.get('version'), cvss_data.get('vectorString', ''), cvss_data.get('accessVector', ''),
-                        cvss_data.get('accessComplexity', ''), cvss_data.get('authentication', ''), cvss_data.get('confidentialityImpact', ''),
-                        cvss_data.get('integrityImpact', ''), cvss_data.get('availabilityImpact', ''),
-                        cvss_data.get('baseScore', 0), cvss_data.get('exploitability', None), cvss_data.get('remediationLevel', ''),
-                        cvss_data.get('reportConfidence', ''), cvss_data.get('temporalScore', 0), cvss_data.get('collateralDamagePotential', ''),
-                        cvss_data.get('targetDistribution', ''), cvss_data.get('confidentialityRequirement', ''),
-                        cvss_data.get('integrityRequirement', ''), cvss_data.get('availabilityRequirement', ''),
+                        metric_id, cvss_data.get('version'), cvss_data.get('vectorString', None), cvss_data.get('accessVector', None),
+                        cvss_data.get('accessComplexity', None), cvss_data.get('authentication', None), cvss_data.get('confidentialityImpact', None),
+                        cvss_data.get('integrityImpact', None), cvss_data.get('availabilityImpact', None),
+                        cvss_data.get('baseScore', 0), cvss_data.get('exploitability', None), cvss_data.get('remediationLevel', None),
+                        cvss_data.get('reportConfidence', None), cvss_data.get('temporalScore', 0), cvss_data.get('collateralDamagePotential', None),
+                        cvss_data.get('targetDistribution', None), cvss_data.get('confidentialityRequirement', None),
+                        cvss_data.get('integrityRequirement', None), cvss_data.get('availabilityRequirement', None),
                         cvss_data.get('environmentalScore', 0)
                     ))
 
@@ -250,7 +253,6 @@ def insert_data(cve_data):
 def main():
     cve_data = fetch_all_cve_data(API_KEY)
     # Convert to DataFrame for easier manipulation
-    insert_data(cve_data)
     df = pd.json_normalize(cve_data)
     df.to_csv("data/cve_data.csv", index=False)
     print("Data fetched and saved to data/cve_data.csv")

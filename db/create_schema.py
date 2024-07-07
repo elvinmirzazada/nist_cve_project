@@ -30,8 +30,8 @@ CREATE DOMAIN operator_format AS TEXT
 CREATE TABLE cve (
     id SERIAL PRIMARY KEY,
     cve_id cve_id_format UNIQUE NOT NULL,
-    source_identifier VARCHAR(50),
-    vuln_status VARCHAR(50),
+    source_identifier TEXT,
+    vuln_status TEXT,
     published TIMESTAMP NOT NULL,
     last_modified TIMESTAMP NOT NULL,
     evaluator_comment TEXT,
@@ -40,14 +40,14 @@ CREATE TABLE cve (
     cisa_exploit_add DATE,
     cisa_action_due DATE,
     cisa_required_action TEXT,
-    cisa_vulnerability_name VARCHAR(50)
+    cisa_vulnerability_name TEXT
 );
     
 CREATE TABLE cvss_metrics (
     id SERIAL PRIMARY KEY,
     cve_id cve_id_format REFERENCES cve(cve_id),
-    version VARCHAR(50) NOT NULL,
-    base_severity varchar(50),
+    version TEXT NOT NULL,
+    base_severity TEXT,
     exploitability_score sub_score_format,
     impact_score sub_score_format,
     ac_insuf_info BOOLEAN,
@@ -55,8 +55,8 @@ CREATE TABLE cvss_metrics (
     obtain_user_privilege BOOLEAN,
     obtain_other_privilege BOOLEAN,
     user_interaction_required BOOLEAN,
-    source VARCHAR(50) NOT NULL,
-    type VARCHAR(50) NOT NULL,
+    source TEXT NOT NULL,
+    type TEXT NOT NULL,
     CONSTRAINT type CHECK (type in ('Primary', 'Secondary'))
 );
 
@@ -68,9 +68,9 @@ CREATE TABLE cvss_data (
     access_vector_type TEXT,
     access_complexity_type TEXT,
     authentication_type TEXT,
-    confidentiality_impact cia_type_format,
-    integrity_impact cia_type_format,
-    availablity_impact cia_type_format,
+    confidentiality_impact TEXT,
+    integrity_impact TEXT,
+    availablity_impact TEXT,
     base_score sub_score_format NOT NULL,
     exploitability TEXT,
     remediation_level TEXT,
@@ -100,7 +100,7 @@ CREATE TABLE cve_references (
     id SERIAL PRIMARY KEY,
     cve_id cve_id_format REFERENCES cve(cve_id),
     url VARCHAR(500) NOT NULL,
-    source VARCHAR(50),
+    source TEXT,
     tags TEXT,
     CONSTRAINT url_format CHECK (url ~ '^(ftp|http)s?://\\S+$')
 );
@@ -109,9 +109,9 @@ COMMENT on column cve_references.tags is 'Tags are concatanate with semicolon, e
 
 CREATE TABLE weaknesses (
     id SERIAL PRIMARY KEY,
-    cve_id VARCHAR(50) REFERENCES cve(cve_id),
-    source VARCHAR(50) NOT NULL,
-    type VARCHAR(50) NOT NULL,
+    cve_id TEXT REFERENCES cve(cve_id),
+    source TEXT NOT NULL,
+    type TEXT NOT NULL,
     CONSTRAINT cve_id_format CHECK (cve_id ~ '^CVE-[0-9]{4}-[0-9]{4,}$')
 );
 
@@ -142,16 +142,16 @@ CREATE TABLE cpe_match (
     vulnerable BOOLEAN NOT NULL,
     criteria TEXT NOT NULL,
     match_criteria_id UUID NOT NULL,
-    version_start_excluding VARCHAR(50),
-    version_start_including VARCHAR(50),
-    version_end_excluding VARCHAR(50),
-    version_end_including VARCHAR(50)
+    version_start_excluding TEXT,
+    version_start_including TEXT,
+    version_end_excluding TEXT,
+    version_end_including TEXT
 );
 
 CREATE TABLE vendor_comments (
     id SERIAL PRIMARY KEY,
     cve_id cve_id_format REFERENCES cve(cve_id),
-    organization VARCHAR(50) NOT NULL,
+    organization TEXT NOT NULL,
     comment TEXT NOT NULL,
     last_modified TIMESTAMP NOT NULL
 );
@@ -159,8 +159,8 @@ CREATE TABLE vendor_comments (
 CREATE TABLE cve_tags (
     id SERIAL PRIMARY KEY,
     cve_id cve_id_format REFERENCES cve(cve_id),
-    source_identifier VARCHAR(50),
-    tag VARCHAR(50),
+    source_identifier TEXT,
+    tag TEXT,
     CONSTRAINT tag_format CHECK (tag in ('unsupported-when-assigned', 'exclusively-hosted-service', 'disputed'))
 );
 

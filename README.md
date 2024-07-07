@@ -158,7 +158,7 @@ Create the database and schema:
 - Ensure PostgreSQL is installed and running.
 - Execute the create_schema.py script to create the tables:
 
-        python create_schema.py
+        python db/create_schema.py
 
 ### Data Collection Script
 

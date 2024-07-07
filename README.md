@@ -22,6 +22,7 @@ Data Loading
     Ensure data is normalized and indexed for efficient querying.
 
 ### Data Model Explanation
+This data model is designed to store and manage CVE (Common Vulnerabilities and Exposures) information effectively. It uses various tables to normalize the data and ensure efficient storage and retrieval.
 
 Tables and Columns
 
@@ -35,13 +36,22 @@ Tables and Columns
         evaluator_comment, evaluator_solution, evaluator_impact: Optional fields for additional information.
         cisa_exploit_add, cisa_action_due, cisa_required_action, cisa_vulnerability_name: Fields related to CISA actions.
 
-    cvss_scores
+    cvss_metrics
         id: Auto-incremented primary key.
         cve_id: Foreign key referencing cve.cve_id.
         version: CVSS version (e.g., 3.1, 3.0, 2.0).
-        base_score, exploitability_score, impact_score: Scores related to the CVE.
+        base_severity, exploitability_score, impact_score: CVSS scores and severity.
         source: Source of the CVSS score.
         type: Type of CVSS score (Primary/Secondary).
+        ac_insuf_info, obtain_all_privilege, obtain_user_privilege, obtain_other_privilege, user_interaction_required: Boolean fields related to the CVSS metrics.
+
+    cvss_data
+    
+        id: Auto-incremented primary key.
+        metric_id: References the cvss_metrics table.
+        version, vector_string, access_vector_type, access_complexity_type, authentication_type, confidentiality_impact, integrity_impact, availablity_impact: Detailed CVSS data.
+        base_score, temporal_score, environmental_score: Score fields.
+        exploitability, remediation_level, report_confidence, collateral_damage_potential, target_distribution, confidentiality_requirement, integrity_equirement, availability_equirement: Additional CVSS metrics.
 
     descriptions
         id: Auto-incremented primary key.
@@ -49,11 +59,61 @@ Tables and Columns
         lang: Language of the description.
         description: Description of the CVE.
 
-    references
+    cve_references
+    
         id: Auto-incremented primary key.
-        cve_id: Foreign key referencing cve.cve_id.
-        url: URL of the reference.
-        source: Source of the reference.
+        cve_id: References the cve table.
+        url, source, tags: Reference URLs, sources, and tags related to the CVE.
+
+    weaknesses
+    
+        id: Auto-incremented primary key.
+        cve_id: References the cve table.
+        source, type: Source and type of the weakness.
+
+    weakness_descriptions
+    
+        id: Auto-incremented primary key.
+        weakness_id: References the weaknesses table.
+        lang, description: Language and description of the weakness.
+    
+    configurations
+    
+        id: Auto-incremented primary key.
+        cve_id: References the cve table.
+        operator, negate: Operator and negate fields for configuration.
+    
+    nodes
+    
+        id: Auto-incremented primary key.
+        configuration_id: References the configurations table.
+        operator, negate: Operator and negate fields for nodes.
+    
+    cpe_match
+    
+        id: Auto-incremented primary key.
+        node_id: References the nodes table.
+        vulnerable, criteria, match_criteria_id, version_start_excluding, version_start_including, version_end_excluding, version_end_including: CPE match details.
+    
+    vendor_comments
+    
+        id: Auto-incremented primary key.
+        cve_id: References the cve table.
+        organization, comment, last_modified: Vendor comments and related details.
+    
+    cve_tags
+    
+        id: Auto-incremented primary key.
+        cve_id: References the cve table.
+        source_identifier, tag: Source identifier and tag for the CVE.
+
+#### Explanation
+
+Domains: Custom domains are created to enforce specific patterns and constraints on the data. 
+- cve_id_format, sub_score_format, vector_string_format, cia_type_format, operator_format: Domains to ensure data integrity and proper format.
+
+Indexes: Indexes are created on frequently queried fields to improve query performance.
+- idx_cve_published, idx_cvss_data_base_score: Indexes to speed up queries on these fields.
 
 Database Schema Reasoning
 
@@ -73,14 +133,32 @@ API Development (main.py)
     Database Connection: Establishes a connection to the PostgreSQL database.
     API Endpoints:
         GET /cve/{cve_id}: Retrieve CVE details by ID.
-        GET /product/{product_id}: Retrieve CVEs by product ID.
         GET /analytics/severity_distribution: Get count of vulnerabilities by severity.
-        GET /analytics/worst_products: Get top 10 products with most vulnerabilities.
-        GET /analytics/top_impact: Get top 10 vulnerabilities by impact score.
-        GET /analytics/top_exploitability: Get top 10 vulnerabilities by exploitability score.
-        GET /analytics/top_attack_vectors: Get top 10 attack vectors.
+        GET /analytics/worst_products/{top_n}: Get top n products with most vulnerabilities.
+        GET /analytics/top_impact/{top_n}: Get top n vulnerabilities by impact score.
+        GET /analytics/top_exploitability/{top_n}: Get top n vulnerabilities by exploitability score.
+        GET /analytics/top_attack_vectors/{top_n}: Get top n attack vectors.
+
+## Chosen Open API: NIST NVD CVE API
+
+API: NIST National Vulnerability Database (NVD) CVE API
+
+Rationale for Selection:
+
+    - Comprehensive Data: The NIST NVD CVE API provides detailed information about vulnerabilities, including CVSS scores, descriptions, references, and configurations.
+    - Standardized Information: It adheres to a standardized format, making it easier to parse and integrate with other systems.
+    - Reliable Source: Managed by a reputable government agency, ensuring data accuracy and reliability.
+    - Rich Metadata: Offers extensive metadata for each vulnerability, useful for in-depth analysis and reporting.
 
 ## Setup Instructions
+
+### Database Setup
+
+Create the database and schema:
+- Ensure PostgreSQL is installed and running.
+- Execute the create_schema.py script to create the tables:
+
+        python create_schema.py
 
 ### Data Collection Script
 
@@ -102,14 +180,6 @@ Run the data collection script:
 
     python fetch_cve_data.py
 
-### Database Setup
-
-Create the database and schema:
-- Ensure PostgreSQL is installed and running.
-- Execute the create_schema.py script to create the tables:
-
-        python create_schema.py
-
 ### API Setup and Usage
 
 Install FastAPI and Uvicorn:
@@ -122,117 +192,6 @@ Run the FastAPI server:
 
 Access the API documentation:
 - Open your browser and navigate to http://127.0.0.1:8000/docs for interactive API documentation.
-
-## API Documentation
-Endpoints
-
-GET /cve/{cve_id}
-
-    Description: Retrieve details of a specific CVE.
-    Parameters: cve_id (string)
-    Sample Response:
-
-    json
-
-    {
-      "cve_id": "CVE-2021-12345",
-      "source_identifier": "source@example.com",
-      "vuln_status": "Analyzed",
-      "published": "2021-01-01T00:00:00Z",
-      "last_modified": "2021-01-02T00:00:00Z",
-      "evaluator_comment": "Sample comment",
-      "evaluator_solution": "Sample solution",
-      "evaluator_impact": "Sample impact",
-      "cisa_exploit_add": "2021-01-03",
-      "cisa_action_due": "2021-01-04",
-      "cisa_required_action": "Sample action",
-      "cisa_vulnerability_name": "Sample vulnerability name"
-    }
-
-GET /product/{product_id}
-
-    Description: Retrieve CVEs associated with a specific product.
-    Parameters: product_id (string)
-    Sample Response:
-
-    json
-
-    [
-      {
-        "cve_id": "CVE-2021-12345",
-        "source_identifier": "source@example.com",
-        "vuln_status": "Analyzed",
-        "published": "2021-01-01T00:00:00Z",
-        "last_modified": "2021-01-02T00:00:00Z",
-        "evaluator_comment": "Sample comment",
-        "evaluator_solution": "Sample solution",
-        "evaluator_impact": "Sample impact",
-        "cisa_exploit_add": "2021-01-03",
-        "cisa_action_due": "2021-01-04",
-        "cisa_required_action": "Sample action",
-        "cisa_vulnerability_name": "Sample vulnerability name"
-      }
-    ]
-
-GET /analytics/severity_distribution
-
-    Description: Get the count of vulnerabilities by severity.
-    Sample Response:
-
-    json
-
-    [
-      {"severity": "HIGH", "count": 123},
-      {"severity": "MEDIUM", "count": 456}
-    ]
-
-GET /analytics/worst_products
-
-    Description: Get top 10 products with most vulnerabilities.
-    Sample Response:
-
-    json
-
-    [
-      {"product": "Product1", "vulnerability_count": 10},
-      {"product": "Product2", "vulnerability_count": 8}
-    ]
-
-GET /analytics/top_impact
-
-    Description: Get top 10 vulnerabilities by impact score.
-    Sample Response:
-
-    json
-
-    [
-      {"cve_id": "CVE-2021-12345", "max_impact_score": 9.8},
-      {"cve_id": "CVE-2021-67890", "max_impact_score": 9.7}
-    ]
-
-GET /analytics/top_exploitability
-
-    Description: Get top 10 vulnerabilities by exploitability score.
-    Sample Response:
-
-    json
-
-    [
-      {"cve_id": "CVE-2021-12345", "max_exploitability_score": 8.9},
-      {"cve_id": "CVE-2021-67890", "max_exploitability_score": 8.8}
-    ]
-
-GET /analytics/top_attack_vectors
-
-    Description: Get top 10 attack vectors.
-    Sample Response:
-
-    json
-
-        [
-          {"attack_vector": "Network", "count": 100},
-          {"attack_vector": "Local", "count": 50}
-        ]
 
 ## Conclusion
 
